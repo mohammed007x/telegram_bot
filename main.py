@@ -134,8 +134,9 @@ def trading_bot():
                             message = f"{symbol} Alert: BUY SIGNAL\nBuy Market Now \nSL: Close under {new_gold_area_low.candle.low}"
                             logging.info(message)
                             telegram_bot_sendtext(message)
+        message = "Helllo From Server"
+        telegram_bot_sendtext(message)
         logging.info("Waiting for 3 minutes...")
-        time.sleep(180)
 
 # Run the bot in a separate thread
 threading.Thread(target=trading_bot, daemon=True).start()
