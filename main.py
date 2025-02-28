@@ -1,6 +1,10 @@
 import requests
 import time
 import pandas as pd
+import threading
+from flask import Flask
+
+app = Flask(__name__)
 
 # Moving Average Class
 class MovingAverage:
@@ -13,8 +17,8 @@ class MovingAverage:
 def calculate_ma(candles_ob, close_period, volume_period):
     ma_list = []
     for i in range(len(candles_ob)):
-        close_ma = sum(candle.close for candle in candles_ob[max(0, i - close_period + 1) : i + 1]) / min(close_period, i + 1)
-        volume_ma = sum(candle.volume for candle in candles_ob[max(0, i - volume_period + 1) : i + 1]) / min(volume_period, i + 1)
+        close_ma = sum(candle.close for candle in candles_ob[max(0, i - close_period + 1): i + 1]) / min(close_period, i + 1)
+        volume_ma = sum(candle.volume for candle in candles_ob[max(0, i - volume_period + 1): i + 1]) / min(volume_period, i + 1)
         ma_list.append(MovingAverage(index=candles_ob[i].index, close_ma=close_ma, volume_ma=volume_ma))
     return ma_list
 
@@ -97,34 +101,45 @@ def telegram_bot_sendtext(message):
     url = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&parse_mode=Markdown&text={message}'
     requests.get(url)
 
-# Main Loop
-HIGHER_TIMEFRAME = "4h"
-LOWER_TIMEFRAME = "15m"
+# Main Trading Bot Logic
+def trading_bot():
+    HIGHER_TIMEFRAME = "4h"
+    LOWER_TIMEFRAME = "15m"
+    
+    while True:
+        print("Fetching Binance symbols...")
+        coin_list = fetch_binance_symbols()
+        for symbol in coin_list:
+            print(f"Processing {symbol} on {HIGHER_TIMEFRAME} timeframe...")
+            candles_high_tf = fetch_binance_data(symbol, HIGHER_TIMEFRAME)
+            if candles_high_tf:
+                ma_list_high = calculate_ma(candles_high_tf, 14, 20)
+                gold_areas_high = get_gold_area(candles_high_tf, ma_list_high)
+                is_in_gold, gold_area_high = is_price_in_gold_area(candles_high_tf[-1], gold_areas_high)
+                if is_in_gold and gold_area_high.type == GoldAreaType.BULLISH:
+                    message = f"{symbol} IN Buy ZONE on {HIGHER_TIMEFRAME}"
+                    print(message)
+                    telegram_bot_sendtext(message)
+                    print(f"Fetching {symbol} data for {LOWER_TIMEFRAME} timeframe...")
+                    candles_low_tf = fetch_binance_data(symbol, LOWER_TIMEFRAME)[:-1]
+                    if candles_low_tf:
+                        ma_list_low = calculate_ma(candles_low_tf, 14, 20)
+                        gold_areas_low = get_gold_area(candles_low_tf, ma_list_low)
+                        is_new_gold, new_gold_area_low = is_price_in_gold_area(candles_low_tf[-1], gold_areas_low)
+                        if is_new_gold and new_gold_area_low.type == GoldAreaType.BULLISH:
+                            message = f"{symbol} Alert: BUY SIGNAL\nBuy Market Now \nSL: Close under {new_gold_area_low.candle.low}"
+                            print(message)
+                            telegram_bot_sendtext(message)
+        print("Waiting for 3 minutes...")
+        time.sleep(180)
 
-while True:
-    print("Fetching Binance symbols...")
-    coin_list = fetch_binance_symbols()
-    for symbol in coin_list:
-        print(f"Processing {symbol} on {HIGHER_TIMEFRAME} timeframe...")
-        candles_high_tf = fetch_binance_data(symbol, HIGHER_TIMEFRAME)
-        if candles_high_tf:
-            ma_list_high = calculate_ma(candles_high_tf, 14, 20)
-            gold_areas_high = get_gold_area(candles_high_tf, ma_list_high)
-            is_in_gold, gold_area_high = is_price_in_gold_area(candles_high_tf[-1], gold_areas_high)
-            if is_in_gold and gold_area_high.type == GoldAreaType.BULLISH:
-                message = f"{symbol} IN Buy ZONE on {HIGHER_TIMEFRAME}"
-                print(message)
-                telegram_bot_sendtext(message)
-                print(f"Fetching {symbol} data for {LOWER_TIMEFRAME} timeframe...")
-                candles_low_tf = fetch_binance_data(symbol, LOWER_TIMEFRAME)[:-1]
-                if candles_low_tf:
-                    ma_list_low = calculate_ma(candles_low_tf, 14, 20)
-                    gold_areas_low = get_gold_area(candles_low_tf, ma_list_low)
-                    is_new_gold, new_gold_area_low = is_price_in_gold_area(candles_low_tf[-1], gold_areas_low)
-                    if is_new_gold and new_gold_area_low.type == GoldAreaType.BULLISH:
-                        message = f"{symbol} Alert: BUY SIGNAL\nBuy Market Now \nSL: Close under {new_gold_area_low.candle.low}"
-                        print(message)
-                        telegram_bot_sendtext(message)
-    print("Waiting for 3 minutes...")
-    time.sleep(180)
+# Run the bot in a separate thread
+threading.Thread(target=trading_bot, daemon=True).start()
 
+# Flask Web App
+@app.route('/')
+def home():
+    return "Trading bot is running!"
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
