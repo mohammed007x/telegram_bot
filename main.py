@@ -3,6 +3,10 @@ import time
 import pandas as pd
 import threading
 from flask import Flask
+import logging
+
+# Set up logging to ensure all logs are shown
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
@@ -107,10 +111,10 @@ def trading_bot():
     LOWER_TIMEFRAME = "15m"
     
     while True:
-        print("Fetching Binance symbols...")
+        logging.info("Fetching Binance symbols...")
         coin_list = fetch_binance_symbols()
         for symbol in coin_list:
-            print(f"Processing {symbol} on {HIGHER_TIMEFRAME} timeframe...")
+            logging.info(f"Processing {symbol} on {HIGHER_TIMEFRAME} timeframe...")
             candles_high_tf = fetch_binance_data(symbol, HIGHER_TIMEFRAME)
             if candles_high_tf:
                 ma_list_high = calculate_ma(candles_high_tf, 14, 20)
@@ -118,9 +122,9 @@ def trading_bot():
                 is_in_gold, gold_area_high = is_price_in_gold_area(candles_high_tf[-1], gold_areas_high)
                 if is_in_gold and gold_area_high.type == GoldAreaType.BULLISH:
                     message = f"{symbol} IN Buy ZONE on {HIGHER_TIMEFRAME}"
-                    print(message)
+                    logging.info(message)
                     telegram_bot_sendtext(message)
-                    print(f"Fetching {symbol} data for {LOWER_TIMEFRAME} timeframe...")
+                    logging.info(f"Fetching {symbol} data for {LOWER_TIMEFRAME} timeframe...")
                     candles_low_tf = fetch_binance_data(symbol, LOWER_TIMEFRAME)[:-1]
                     if candles_low_tf:
                         ma_list_low = calculate_ma(candles_low_tf, 14, 20)
@@ -128,9 +132,9 @@ def trading_bot():
                         is_new_gold, new_gold_area_low = is_price_in_gold_area(candles_low_tf[-1], gold_areas_low)
                         if is_new_gold and new_gold_area_low.type == GoldAreaType.BULLISH:
                             message = f"{symbol} Alert: BUY SIGNAL\nBuy Market Now \nSL: Close under {new_gold_area_low.candle.low}"
-                            print(message)
+                            logging.info(message)
                             telegram_bot_sendtext(message)
-        print("Waiting for 3 minutes...")
+        logging.info("Waiting for 3 minutes...")
         time.sleep(180)
 
 # Run the bot in a separate thread
@@ -143,3 +147,4 @@ def home():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=10000)
+
