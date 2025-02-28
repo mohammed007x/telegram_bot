@@ -98,12 +98,15 @@ def fetch_binance_symbols():
         return [s['symbol'] for s in response.json()['symbols'] if 'USDT' in s['symbol']]
     return []
 
-# Telegram Bot
-def telegram_bot_sendtext(message):
-    bot_token = 'YOUR_BOT_TOKEN'
-    bot_chatID = 'YOUR_CHAT_ID'
-    url = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&parse_mode=Markdown&text={message}'
-    requests.get(url)
+# ===> Telegram Bot Code  
+def telegram_bot_sendtext(bot_message):
+    bot_token = '7174908289:AAHdD6zn-t4IBDd6V1Vr6Zg0D71bWOVLbGI'
+    bot_chatID = '@SAMSRA_COMPANY'
+    # https://t.me/SAMSRA_COMPANY/
+    send_text = f'https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={bot_chatID}&parse_mode=Markdown&text={bot_message}'
+
+    response = requests.get(send_text)
+    return response.json()
 
 # Main Trading Bot Logic
 def trading_bot():
