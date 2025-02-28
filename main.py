@@ -90,14 +90,21 @@ def fetch_binance_data(symbol, interval, limit=1000):
     if response.status_code == 200:
         return [Candle(*entry[:6], index) for index, entry in enumerate(response.json())]
     return []
-
 def fetch_binance_symbols():
     url = "https://api.binance.com/api/v3/exchangeInfo"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return [s['symbol'] for s in response.json()['symbols'] if 'USDT' in s['symbol']]
-    return []
+    
+    # Retry 3 times in case of failure
+    for _ in range(3):
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            return [s['symbol'] for s in response.json()['symbols'] if 'USDT' in s['symbol']]
+        
+        # Log the error and retry
+        print(f"Failed to fetch Binance symbols: {response.status_code} - {response.text}")
+        time.sleep(5)  # Wait for 5 seconds before retrying
 
+    return []
 # ===> Telegram Bot Code  
 def telegram_bot_sendtext(bot_message):
     bot_token = '7174908289:AAHdD6zn-t4IBDd6V1Vr6Zg0D71bWOVLbGI'
