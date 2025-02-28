@@ -117,6 +117,7 @@ def trading_bot():
         logging.info("Fetching Binance symbols...")
         coin_list = fetch_binance_symbols()
         for symbol in coin_list:
+            telegram_bot_sendtext(symbol)
             logging.info(f"Processing {symbol} on {HIGHER_TIMEFRAME} timeframe...")
             candles_high_tf = fetch_binance_data(symbol, HIGHER_TIMEFRAME)
             if candles_high_tf:
@@ -125,6 +126,7 @@ def trading_bot():
                 is_in_gold, gold_area_high = is_price_in_gold_area(candles_high_tf[-1], gold_areas_high)
                 if is_in_gold and gold_area_high.type == GoldAreaType.BULLISH:
                     message = f"{symbol} IN Buy ZONE on {HIGHER_TIMEFRAME}"
+                    print(message)
                     logging.info(message)
                     telegram_bot_sendtext(message)
                     logging.info(f"Fetching {symbol} data for {LOWER_TIMEFRAME} timeframe...")
@@ -137,10 +139,6 @@ def trading_bot():
                             message = f"{symbol} Alert: BUY SIGNAL\nBuy Market Now \nSL: Close under {new_gold_area_low.candle.low}"
                             logging.info(message)
                             telegram_bot_sendtext(message)
-        message = "Helllo From Server"
-        telegram_bot_sendtext(message)
-        logging.info("Waiting for 3 minutes...")
-
 # Run the bot in a separate thread
 threading.Thread(target=trading_bot, daemon=True).start()
 
