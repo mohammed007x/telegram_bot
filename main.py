@@ -158,6 +158,14 @@
 #     app.run(host='0.0.0.0', port=10000)
 
 import requests
+import logging
+from flask import Flask, jsonify
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger()
+
+app = Flask(__name__)
 
 def fetch_coingecko_symbols():
     url = "https://api.coingecko.com/api/v3/coins/markets"
@@ -167,17 +175,26 @@ def fetch_coingecko_symbols():
         'per_page': 100,  # Number of results to return
         'page': 1,  # Page number
     }
-    
-    response = requests.get(url, params=params)
-    
-    if response.status_code == 200:
-        return [coin['id'] for coin in response.json()]
-    else:
-        print(f"Error fetching data: {response.status_code}")
+
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()  # Raise an exception for bad responses
+        symbols = [coin['id'] for coin in response.json()]
+        logger.info(f"Fetched {len(symbols)} symbols from CoinGecko.")  # Log the number of symbols fetched
+        return symbols
+    except requests.RequestException as e:
+        logger.error(f"Error fetching data: {e}")
         return []
 
-# Fetch the symbols from CoinGecko
-symbols = fetch_coingecko_symbols()
-print(symbols)
+@app.route('/symbols', methods=['GET'])
+def get_symbols():
+    symbols = fetch_coingecko_symbols()
+    return jsonify(symbols)
+
+if __name__ == '__main__':
+    logger.info("Starting the Flask app and fetching symbols...")
+    # Fetch symbols once when the app starts and log the result
+    fetch_coingecko_symbols()
+    app.run(debug=True, host='0.0.0.0', port=10000)
 
 
